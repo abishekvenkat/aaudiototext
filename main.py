@@ -189,6 +189,10 @@ def main():
     parser.add_argument("input", nargs="?", help="Audio or video file to transcribe")
     parser.add_argument("--model", default="large-v3", choices=list(MLX_MODELS.keys()),
                         help="Whisper model to use (default: large-v3)")
+    parser.add_argument("--language", default="en",
+                        help="Transcription language code/name passed to Whisper (default: en)")
+    parser.add_argument("--transcribe-only", action="store_true",
+                        help="Run transcription only and skip summary generation")
     parser.add_argument("--summarize", metavar="TIMESTAMPS_FILE",
                         help="Run summary only on an existing timestamps.txt")
     args = parser.parse_args()
@@ -236,6 +240,7 @@ def main():
     result = mlx_whisper.transcribe(
         audio_path,
         path_or_hf_repo=hf_repo,
+        language=args.language,
         verbose=True  # Streams output directly to terminal
     )
 
@@ -259,20 +264,23 @@ def main():
             text = segment["text"].strip()
             f.write(f"{start} --> {end}: {text}\n")
 
-    # Generate summary via ollama
-    print(f"\nGenerating summary with {OLLAMA_MODEL}...")
-    t1 = time.time()
-    with open(timestamps_path, encoding="utf-8") as f:
-        transcription_text = f.read()
-
-    summary = generate_summary(transcription_text)
-    summary_time = time.time() - t1
-
     summary_path = os.path.join(out_dir, "summary.md")
-    if summary:
-        with open(summary_path, "w", encoding="utf-8") as f:
-            f.write(f"# {base_name}\n\n")
-            f.write(summary)
+    summary = None
+    summary_time = 0.0
+
+    if not args.transcribe_only:
+        print(f"\nGenerating summary with {OLLAMA_MODEL}...")
+        t1 = time.time()
+        with open(timestamps_path, encoding="utf-8") as f:
+            transcription_text = f.read()
+
+        summary = generate_summary(transcription_text)
+        summary_time = time.time() - t1
+
+        if summary:
+            with open(summary_path, "w", encoding="utf-8") as f:
+                f.write(f"# {base_name}\n\n")
+                f.write(summary)
 
     # Time saved
     total_processing = transcribe_time + summary_time
@@ -282,7 +290,9 @@ def main():
     print()
     print("=" * 52)
     print(f"  Transcription: {timestamps_path}")
-    if summary:
+    if args.transcribe_only:
+        print("  Summary:       skipped (--transcribe-only)")
+    elif summary:
         print(f"  Summary:       {summary_path}")
     else:
         print("  Summary:       skipped (see ollama error above)")

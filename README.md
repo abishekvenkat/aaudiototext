@@ -1,16 +1,16 @@
 # aaudiototext
 
-Transcribes audio and video files locally on Apple Silicon using MLX Whisper, then summarizes them with a local LLM via Ollama. Everything runs on-device -- no cloud services or accounts needed.
+Transcribes audio and video files locally on Apple Silicon using MLX Whisper, then optionally summarizes them with a local LLM via Ollama. Everything runs on-device -- no cloud services or accounts needed.
 
 ## What it does
 
 1. Takes an audio or video file as input
 2. Converts video to mp3 (320kbps) via ffmpeg if needed
 3. Transcribes using MLX Whisper, hardware-accelerated on Apple Silicon GPU
-4. Sends the transcript to `qwen3.5:9b` via Ollama for summarization
+4. Optionally sends the transcript to `qwen3.5:9b` via Ollama for summarization
 5. Saves output to `~/Downloads/Transcriptions/<filename>/` and opens the folder
 
-Each run produces two files:
+Each default run produces two files:
 - `timestamps.txt` -- full transcript with `[HH:MM:SS.mmm]` timestamps
 - `summary.md` -- structured summary with key points, decisions, and action items
 
@@ -51,6 +51,18 @@ python .venv/main.py --model small /path/to/recording.mp4
 
 Available models: `tiny`, `base`, `small`, `medium`, `large`, `large-v2`, `large-v3`
 
+**Transcription language** defaults to English (`en`):
+
+```bash
+python .venv/main.py --language en /path/to/recording.mp4
+```
+
+**Transcribe only** (skip summary generation):
+
+```bash
+python .venv/main.py --transcribe /path/to/recording.mp4
+```
+
 **Summarize only** (re-run summary on an existing transcription):
 
 ```bash
@@ -66,6 +78,7 @@ python .venv/main.py --summarize ~/Downloads/Transcriptions/<folder>/timestamps.
 
 ## Notes
 
+- Transcription defaults to English unless you override `--language`
 - Ollama starts automatically if it is not running and stops after the summary is done
 - MLX Whisper models are downloaded from HuggingFace on first use (large-v3 is roughly 3 GB)
 - At the end of each run, you get a "time saved" comparison between media length and processing time
